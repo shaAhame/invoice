@@ -1,4 +1,4 @@
-/* Removes the up/down spinner arrows from number inputs across the app */
+/* Removes the up/down spinner arrows from any leftover number inputs */
 input[type="number"]::-webkit-outer-spin-button,
 input[type="number"]::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -7,4 +7,45 @@ input[type="number"]::-webkit-inner-spin-button {
 input[type="number"] {
   -moz-appearance: textfield;
   appearance: textfield;
+}
+
+/* Base mobile-friendly setup */
+* {
+  box-sizing: border-box;
+}
+html {
+  -webkit-text-size-adjust: 100%;
+}
+body {
+  overflow-x: hidden;
+}
+
+/* Keeps wide item tables usable on phones — scroll sideways instead of
+   squeezing every column unreadably small */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Text/number inputs at 16px stop iOS Safari from auto-zooming on focus */
+input, select, textarea {
+  font-size: 16px;
+}
+
+@media (max-width: 640px) {
+  .responsive-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .header-row {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .header-actions {
+    width: 100%;
+  }
+  .header-actions a,
+  .header-actions button {
+    flex: 1;
+    text-align: center;
+  }
 }

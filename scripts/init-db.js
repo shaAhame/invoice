@@ -47,6 +47,14 @@ async function main() {
     );
   `);
 
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS credentials (
+      role_key TEXT PRIMARY KEY,
+      password_hash TEXT NOT NULL,
+      updated_at TIMESTAMP DEFAULT now()
+    );
+  `);
+
   console.log("✅ Tables created (or already existed). You're ready to go.");
   await pool.end();
   process.exit(0);

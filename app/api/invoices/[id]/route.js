@@ -1,19 +1,38 @@
 import { NextResponse } from "next/server";
+import { getSession } from "../../../../lib/session";
 import { getInvoiceById, updateInvoice, deleteInvoice } from "../../../../lib/db";
 import { computeItems, computeTotals } from "../../../../lib/calc";
 import { amountToWords } from "../../../../lib/numToWords";
 
+function canAccess(session, invoice) {
+  if (!session) return false;
+  if (session.role === "admin") return true;
+  return invoice.branch_code === session.branchCode;
+}
+
 export async function GET(req, { params }) {
+  const session = await getSession();
+  if (!session) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
+
   const invoice = await getInvoiceById(params.id);
   if (!invoice) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!canAccess(session, invoice)) {
+    return NextResponse.json({ error: "You don't have access to this invoice" }, { status: 403 });
+  }
   return NextResponse.json({ invoice });
 }
 
 export async function PUT(req, { params }) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
+
     const existing = await getInvoiceById(params.id);
     if (!existing) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (!canAccess(session, existing)) {
+      return NextResponse.json({ error: "You don't have access to this invoice" }, { status: 403 });
     }
 
     const body = await req.json();
@@ -65,6 +84,17 @@ export async function PUT(req, { params }) {
 
 export async function DELETE(req, { params }) {
   try {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
+
+    const existing = await getInvoiceById(params.id);
+    if (!existing) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    if (!canAccess(session, existing)) {
+      return NextResponse.json({ error: "You don't have access to this invoice" }, { status: 403 });
+    }
+
     const result = await deleteInvoice(params.id);
     if (!result.deleted) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });

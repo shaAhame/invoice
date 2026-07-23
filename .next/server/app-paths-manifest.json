@@ -1,7 +1,0 @@
-{
-  "/invoice/[id]/edit/page": "app/invoice/[id]/edit/page.js",
-  "/invoices/page": "app/invoices/page.js",
-  "/invoice/[id]/page": "app/invoice/[id]/page.js",
-  "/api/invoices/[id]/route": "app/api/invoices/[id]/route.js",
-  "/page": "app/page.js"
-}

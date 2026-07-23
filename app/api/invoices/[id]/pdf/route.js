@@ -4,6 +4,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import React from "react";
 import fs from "fs";
 import path from "path";
+import { getSession } from "../../../../../lib/session";
 import { getInvoiceById } from "../../../../../lib/db";
 import { BRANCHES } from "../../../../../lib/branches";
 import InvoicePdf from "../../../../../lib/InvoicePdf";
@@ -23,10 +24,19 @@ function getLogoDataUrl() {
 }
 
 export async function GET(req, { params }) {
+  const session = await getSession();
+  if (!session) {
+    return new Response("Not logged in", { status: 401 });
+  }
+
   const invoice = await getInvoiceById(params.id);
   if (!invoice) {
     return new Response("Not found", { status: 404 });
   }
+  if (session.role !== "admin" && invoice.branch_code !== session.branchCode) {
+    return new Response("You don't have access to this invoice", { status: 403 });
+  }
+
   const branch = getBranchByCode(invoice.branch_code);
   const logoDataUrl = getLogoDataUrl();
 
