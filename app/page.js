@@ -11,7 +11,15 @@ const BRANCH_OPTIONS = [
 ];
 
 function emptyItem() {
-  return { id: Math.random().toString(36).slice(2), description: "", qty: 1, unitPrice: "", isMrp: true };
+  return { id: Math.random().toString(36).slice(2), description: "", qty: "1", unitPrice: "", isMrp: false };
+}
+
+// Strips leading zeros as the person types (e.g. "0450000" -> "450000"),
+// while still allowing a single "0" or a decimal like "0.5".
+function stripLeadingZeros(value) {
+  if (value === "") return value;
+  if (/^0+$/.test(value)) return "0";
+  return value.replace(/^0+(?=\d)/, "");
 }
 
 export default function NewInvoicePage() {
@@ -29,7 +37,8 @@ export default function NewInvoicePage() {
   const [error, setError] = useState("");
 
   const updateItem = (id, field, value) => {
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, [field]: value } : it)));
+    const cleanValue = field === "qty" || field === "unitPrice" ? stripLeadingZeros(value) : value;
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, [field]: cleanValue } : it)));
   };
   const addItem = () => setItems((prev) => [...prev, emptyItem()]);
   const removeItem = (id) => setItems((prev) => (prev.length > 1 ? prev.filter((it) => it.id !== id) : prev));
