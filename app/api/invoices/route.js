@@ -16,7 +16,6 @@ export async function POST(req) {
       additionalInfo,
       paymentMode,
       discount,
-      applySscl,
       items,
     } = body;
 
@@ -30,13 +29,11 @@ export async function POST(req) {
 
     // Recompute everything server-side — never trust totals sent from the client.
     const computedItems = computeItems(
-      items.map((it) => ({ ...it, description: String(it.description || "").slice(0, 300) })),
-      { applySscl }
+      items.map((it) => ({ ...it, description: String(it.description || "").slice(0, 300) }))
     );
-    const { totalExclusive, discountVal, ssclAmount, vatAmount, totalAmount } = computeTotals(
-      computedItems,
-      { discount, applySscl }
-    );
+    const { totalExclusive, discountVal, vatAmount, totalAmount } = computeTotals(computedItems, {
+      discount,
+    });
 
     const invoiceNo = await getNextInvoiceNumber(branchConfig.code);
 
@@ -52,7 +49,7 @@ export async function POST(req) {
       items: computedItems,
       totalValue: totalExclusive,
       discount: discountVal,
-      ssclAmount,
+      ssclAmount: 0,
       vatAmount,
       totalAmount,
       amountWords: amountToWords(totalAmount),
