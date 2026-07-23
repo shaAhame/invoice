@@ -14,7 +14,6 @@ export default async function InvoiceViewPage({ params }) {
   }
   const branch = Object.values(BRANCHES).find((b) => b.code === invoice.branch_code);
   const items = typeof invoice.items === "string" ? JSON.parse(invoice.items) : invoice.items;
-  const hasSscl = Number(invoice.sscl_amount) > 0;
 
   return (
     <main style={{ maxWidth: 800, margin: "0 auto", padding: 24 }}>
@@ -44,7 +43,9 @@ export default async function InvoiceViewPage({ params }) {
             <tr style={{ textAlign: "left", fontSize: 12 }}>
               <th style={th}>Item</th>
               <th style={th}>Qty</th>
-              <th style={th}>Unit Price (final)</th>
+              <th style={th}>Unit Price</th>
+              <th style={th}>Excl. VAT</th>
+              <th style={th}>VAT (18%)</th>
               <th style={th}>Line Total</th>
             </tr>
           </thead>
@@ -54,6 +55,8 @@ export default async function InvoiceViewPage({ params }) {
                 <td style={td}>{it.description}</td>
                 <td style={td}>{it.qty}</td>
                 <td style={td}>{money(it.unitPrice)}</td>
+                <td style={td}>{money(it.lineExclusive)}</td>
+                <td style={td}>{money(it.lineVat)}</td>
                 <td style={td}>{money(it.lineInclusive)}</td>
               </tr>
             ))}
@@ -64,7 +67,6 @@ export default async function InvoiceViewPage({ params }) {
       <div style={{ ...card, background: "#fafafa" }}>
         <Row label="Total Value of Supply (excl. VAT)" value={money(invoice.total_value)} />
         <Row label="Discount" value={money(invoice.discount)} />
-        {hasSscl && <Row label="SSCL (2.5%)" value={money(invoice.sscl_amount)} />}
         <Row label="VAT Amount (18%)" value={money(invoice.vat_amount)} />
         <Row label="Total Amount including VAT" value={money(invoice.total_amount)} bold />
       </div>
