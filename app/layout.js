@@ -1,3 +1,5 @@
+import "./globals.css";
+
 export const metadata = {
   title: "iDealz - Tax Invoice",
   description: "Tax invoice generator for iDealz stores",
