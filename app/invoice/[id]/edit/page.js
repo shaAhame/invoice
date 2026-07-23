@@ -16,10 +16,18 @@ function itemFromExisting(it) {
 
 // Strips leading zeros as the person types (e.g. "0450000" -> "450000"),
 // while still allowing a single "0" or a decimal like "0.5".
-function stripLeadingZeros(value) {
-  if (value === "") return value;
-  if (/^0+$/.test(value)) return "0";
-  return value.replace(/^0+(?=\d)/, "");
+// Keeps only digits (and a single decimal point for prices), then strips
+// leading zeros — e.g. typing "09" becomes "9", "099999" becomes "99999".
+function sanitizeNumeric(value, allowDecimal) {
+  let cleaned = allowDecimal ? value.replace(/[^0-9.]/g, "") : value.replace(/[^0-9]/g, "");
+  if (allowDecimal) {
+    const parts = cleaned.split(".");
+    cleaned = parts.shift() + (parts.length ? "." + parts.join("") : "");
+  }
+  if (cleaned === "") return cleaned;
+  const [intPart, ...rest] = cleaned.split(".");
+  const strippedInt = /^0+$/.test(intPart) ? "0" : intPart.replace(/^0+(?=\d)/, "");
+  return rest.length ? `${strippedInt}.${rest.join("")}` : strippedInt;
 }
 
 export default function EditInvoicePage() {
@@ -64,7 +72,9 @@ export default function EditInvoicePage() {
   }, [params.id]);
 
   const updateItem = (id, field, value) => {
-    const cleanValue = field === "qty" || field === "unitPrice" ? stripLeadingZeros(value) : value;
+    let cleanValue = value;
+    if (field === "qty") cleanValue = sanitizeNumeric(value, false);
+    if (field === "unitPrice") cleanValue = sanitizeNumeric(value, true);
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, [field]: cleanValue } : it)));
   };
   const addItem = () =>
@@ -184,11 +194,11 @@ export default function EditInvoicePage() {
             {rows.map((r) => (
               <tr key={r.id}>
                 <td style={td}><input style={cellInput} value={r.description} onChange={(e) => updateItem(r.id, "description", e.target.value)} /></td>
-                <td style={td}><input style={{ ...cellInput, width: 60 }} type="number" min="0" value={r.qty} onChange={(e) => updateItem(r.id, "qty", e.target.value)} /></td>
+                <td style={td}><input style={{ ...cellInput, width: 60 }} type="text" inputMode="numeric" value={r.qty} onChange={(e) => updateItem(r.id, "qty", e.target.value)} /></td>
                 <td style={{ ...td, textAlign: "center" }}>
                   <input type="checkbox" checked={r.isMrp} onChange={(e) => updateItem(r.id, "isMrp", e.target.checked)} />
                 </td>
-                <td style={td}><input style={{ ...cellInput, width: 110 }} type="number" min="0" value={r.unitPrice} onChange={(e) => updateItem(r.id, "unitPrice", e.target.value)} /></td>
+                <td style={td}><input style={{ ...cellInput, width: 110 }} type="text" inputMode="decimal" value={r.unitPrice} onChange={(e) => updateItem(r.id, "unitPrice", e.target.value)} /></td>
                 <td style={{ ...td, fontSize: 13 }}>{fmt(r.lineExclusive)}</td>
                 <td style={{ ...td, fontSize: 13 }}>{fmt(r.lineVat)}</td>
                 <td style={{ ...td, fontSize: 13, fontWeight: 600 }}>{fmt(r.lineInclusive)}</td>
@@ -203,7 +213,7 @@ export default function EditInvoicePage() {
       <div style={{ ...card, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
           <label style={label}>Discount (Rs., excl. VAT basis, optional)</label>
-          <input style={input} type="number" min="0" value={discount} onChange={(e) => setDiscount(e.target.value)} />
+          <input style={input} type="text" inputMode="decimal" value={discount} onChange={(e) => setDiscount(sanitizeNumeric(e.target.value, true))} />
         </div>
         <div>
           <label style={label}>Mode of Payment</label>
