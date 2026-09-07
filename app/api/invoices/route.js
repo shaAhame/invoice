@@ -24,6 +24,7 @@ export async function POST(req) {
       discount,
       items,
       invoiceDate,
+      manualInvoiceNo,
     } = body;
 
     // Backdating: if a valid past (or any) date is given, use it — otherwise
@@ -68,26 +69,43 @@ export async function POST(req) {
       discount,
     });
 
-    const invoiceNo = await getNextInvoiceNumber(branchConfig.code, resolvedDate);
+    // Manual override: if the person typed their own invoice number, use it
+    // as-is instead of auto-generating one. The running counter for this
+    // branch is left untouched either way, so auto-numbering picks up
+    // normally next time regardless of what manual numbers were used in between.
+    const trimmedManual = (manualInvoiceNo || "").trim();
+    const invoiceNo = trimmedManual || (await getNextInvoiceNumber(branchConfig.code, resolvedDate));
 
-    const saved = await createInvoice({
-      branchCode: branchConfig.code,
-      invoiceNo,
-      invoiceDate: resolvedDate.toISOString().slice(0, 10),
-      purchaserName: purchaserName || "",
-      purchaserAddress: purchaserAddress || "",
-      purchaserTp: purchaserTp || "",
-      purchaserTin: purchaserTin || "",
-      additionalInfo: additionalInfo || "",
-      items: computedItems,
-      totalValue: totalExclusive,
-      discount: discountVal,
-      ssclAmount: 0,
-      vatAmount,
-      totalAmount,
-      amountWords: amountToWords(totalAmount),
-      paymentMode: paymentMode || "FULL CASH",
-    });
+    let saved;
+    try {
+      saved = await createInvoice({
+        branchCode: branchConfig.code,
+        invoiceNo,
+        invoiceDate: resolvedDate.toISOString().slice(0, 10),
+        purchaserName: purchaserName || "",
+        purchaserAddress: purchaserAddress || "",
+        purchaserTp: purchaserTp || "",
+        purchaserTin: purchaserTin || "",
+        additionalInfo: additionalInfo || "",
+        items: computedItems,
+        totalValue: totalExclusive,
+        discount: discountVal,
+        ssclAmount: 0,
+        vatAmount,
+        totalAmount,
+        amountWords: amountToWords(totalAmount),
+        paymentMode: paymentMode || "FULL CASH",
+      });
+    } catch (err) {
+      // Postgres unique_violation — this invoice number is already used.
+      if (err.code === "23505") {
+        return NextResponse.json(
+          { error: `Invoice number "${invoiceNo}" is already used. Choose a different number.` },
+          { status: 409 }
+        );
+      }
+      throw err;
+    }
 
     return NextResponse.json({ id: saved.id, invoiceNo });
   } catch (err) {
