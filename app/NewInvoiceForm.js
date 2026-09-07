@@ -34,6 +34,7 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
   const router = useRouter();
   const [branch, setBranch] = useState(isAdmin ? "prime" : lockedBranchKey);
   const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [manualInvoiceNo, setManualInvoiceNo] = useState("");
   const [purchaserName, setPurchaserName] = useState("");
   const [purchaserAddress, setPurchaserAddress] = useState("");
   const [purchaserTp, setPurchaserTp] = useState("");
@@ -98,6 +99,7 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
         body: JSON.stringify({
           branch,
           invoiceDate,
+          manualInvoiceNo,
           purchaserName,
           purchaserAddress,
           purchaserTp,
@@ -156,6 +158,15 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
             value={invoiceDate}
             max={new Date().toISOString().slice(0, 10)}
             onChange={(e) => setInvoiceDate(e.target.value)}
+          />
+        </div>
+        <div style={{ gridColumn: "1 / -1" }}>
+          <label style={label}>Invoice Number (optional — leave blank to auto-generate)</label>
+          <input
+            style={input}
+            value={manualInvoiceNo}
+            onChange={(e) => setManualInvoiceNo(e.target.value)}
+            placeholder="e.g. 26SEP-IDPR-00150 — leave blank to auto-number as usual"
           />
         </div>
       </div>
