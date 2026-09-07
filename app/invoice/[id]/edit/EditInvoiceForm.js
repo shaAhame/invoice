@@ -8,6 +8,7 @@ function itemFromExisting(it) {
   return {
     id: Math.random().toString(36).slice(2),
     description: it.description,
+    serialNo: it.serialNo || "",
     qty: it.qty,
     unitPrice: it.unitPrice,
     isMrp: it.isMrp !== undefined ? it.isMrp : true,
@@ -39,7 +40,7 @@ export default function EditInvoiceForm() {
   const [purchaserAddress, setPurchaserAddress] = useState("");
   const [purchaserTp, setPurchaserTp] = useState("");
   const [purchaserTin, setPurchaserTin] = useState("");
-  const [additionalInfo, setAdditionalInfo] = useState("");
+  const [additionalInfoList, setAdditionalInfoList] = useState([""]);
   const [paymentMode, setPaymentMode] = useState(PAYMENT_MODES[0]);
   const [discount, setDiscount] = useState("0");
   const [items, setItems] = useState([]);
@@ -59,7 +60,8 @@ export default function EditInvoiceForm() {
         setPurchaserAddress(inv.purchaser_address || "");
         setPurchaserTp(inv.purchaser_tp || "");
         setPurchaserTin(inv.purchaser_tin || "");
-        setAdditionalInfo(inv.additional_info || "");
+        const existingNotes = (inv.additional_info || "").split("\n").map((s) => s.trim()).filter(Boolean);
+        setAdditionalInfoList(existingNotes.length ? existingNotes : [""]);
         setPaymentMode(inv.payment_mode || PAYMENT_MODES[0]);
         setDiscount(String(inv.discount || 0));
         setItems(parsedItems.map(itemFromExisting));
@@ -78,7 +80,7 @@ export default function EditInvoiceForm() {
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, [field]: cleanValue } : it)));
   };
   const addItem = () =>
-    setItems((prev) => [...prev, { id: Math.random().toString(36).slice(2), description: "", qty: "1", unitPrice: "", isMrp: false }]);
+    setItems((prev) => [...prev, { id: Math.random().toString(36).slice(2), description: "", serialNo: "", qty: "1", unitPrice: "", isMrp: false }]);
   const removeItem = (id) => setItems((prev) => (prev.length > 1 ? prev.filter((it) => it.id !== id) : prev));
 
   const VAT_RATE = 0.18;
@@ -124,10 +126,10 @@ export default function EditInvoiceForm() {
           purchaserAddress,
           purchaserTp,
           purchaserTin,
-          additionalInfo,
+          additionalInfo: additionalInfoList.map((n) => n.trim()).filter(Boolean).join("\n"),
           paymentMode,
           discount: discountVal,
-          items: validItems.map((r) => ({ description: r.description, qty: r.qty, unitPrice: r.unitPrice, isMrp: r.isMrp })),
+          items: validItems.map((r) => ({ description: r.description, serialNo: r.serialNo, qty: r.qty, unitPrice: r.unitPrice, isMrp: r.isMrp })),
         }),
       });
       const data = await res.json();
@@ -194,7 +196,15 @@ export default function EditInvoiceForm() {
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
-                <td style={td}><input style={cellInput} value={r.description} onChange={(e) => updateItem(r.id, "description", e.target.value)} /></td>
+                <td style={td}>
+                  <input style={cellInput} value={r.description} onChange={(e) => updateItem(r.id, "description", e.target.value)} />
+                  <input
+                    style={{ ...cellInput, marginTop: 4, fontSize: 12, color: "#555" }}
+                    value={r.serialNo}
+                    onChange={(e) => updateItem(r.id, "serialNo", e.target.value)}
+                    placeholder="Serial / IMEI No. (optional)"
+                  />
+                </td>
                 <td style={td}><input style={{ ...cellInput, width: 60 }} type="text" inputMode="numeric" value={r.qty} onChange={(e) => updateItem(r.id, "qty", e.target.value)} /></td>
                 <td style={{ ...td, textAlign: "center" }}>
                   <input type="checkbox" checked={r.isMrp} onChange={(e) => updateItem(r.id, "isMrp", e.target.checked)} />
@@ -225,7 +235,32 @@ export default function EditInvoiceForm() {
         </div>
         <div style={{ gridColumn: "1 / -1" }}>
           <label style={label}>Additional Information (optional)</label>
-          <input style={input} value={additionalInfo} onChange={(e) => setAdditionalInfo(e.target.value)} />
+          {additionalInfoList.map((note, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <input
+                style={input}
+                value={note}
+                onChange={(e) => {
+                  const next = [...additionalInfoList];
+                  next[i] = e.target.value;
+                  setAdditionalInfoList(next);
+                }}
+                placeholder="e.g. Warranty period, delivery note, etc."
+              />
+              {additionalInfoList.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setAdditionalInfoList(additionalInfoList.filter((_, idx) => idx !== i))}
+                  style={removeBtn}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+          <button type="button" onClick={() => setAdditionalInfoList([...additionalInfoList, ""])} style={addBtn}>
+            + Add another note
+          </button>
         </div>
       </div>
 
