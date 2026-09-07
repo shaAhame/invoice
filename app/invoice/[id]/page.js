@@ -52,7 +52,16 @@ export default async function InvoiceViewPage({ params }) {
         <p><b>Date:</b> {formatDate(invoice.invoice_date)}</p>
         <p><b>Purchaser:</b> {invoice.purchaser_name || "Cash Sale"}</p>
         {invoice.purchaser_tin && <p><b>Purchaser TIN:</b> {invoice.purchaser_tin}</p>}
-        {invoice.additional_info && <p><b>Additional Information:</b> {invoice.additional_info}</p>}
+        {invoice.additional_info && (
+          <div>
+            <b>Additional Information:</b>
+            <ul style={{ margin: "4px 0 0", paddingLeft: 20 }}>
+              {invoice.additional_info.split("\n").map((s) => s.trim()).filter(Boolean).map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div style={card}>
@@ -71,7 +80,10 @@ export default async function InvoiceViewPage({ params }) {
             <tbody>
               {items.map((it, i) => (
                 <tr key={i}>
-                  <td style={td}>{it.description}</td>
+                  <td style={td}>
+                    {it.description}
+                    {it.serialNo && <div style={{ fontSize: 11, color: "#666" }}>S/N: {it.serialNo}</div>}
+                  </td>
                   <td style={td}>{it.qty}</td>
                   <td style={td}>{money(it.unitPrice)}</td>
                   <td style={td}>{money(it.lineExclusive)}</td>
