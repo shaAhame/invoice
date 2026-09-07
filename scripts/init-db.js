@@ -40,10 +40,8 @@ async function main() {
 
   await pool.query(`
     CREATE TABLE IF NOT EXISTS invoice_counters (
-      branch_code TEXT NOT NULL,
-      year_month TEXT NOT NULL,
-      last_number INTEGER NOT NULL,
-      PRIMARY KEY (branch_code, year_month)
+      branch_code TEXT PRIMARY KEY,
+      last_number INTEGER NOT NULL
     );
   `);
 
