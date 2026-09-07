@@ -23,7 +23,24 @@ export async function POST(req) {
       paymentMode,
       discount,
       items,
+      invoiceDate,
     } = body;
+
+    // Backdating: if a valid past (or any) date is given, use it — otherwise
+    // default to today. Never allowed to be a future date.
+    let resolvedDate = new Date();
+    if (invoiceDate) {
+      const parsed = new Date(`${invoiceDate}T00:00:00Z`);
+      if (isNaN(parsed.getTime())) {
+        return NextResponse.json({ error: "Invalid invoice date" }, { status: 400 });
+      }
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      if (parsed > today) {
+        return NextResponse.json({ error: "Invoice date can't be in the future" }, { status: 400 });
+      }
+      resolvedDate = parsed;
+    }
 
     // Branch users can only ever create invoices for their own branch — the
     // branch value from the client is ignored and replaced with their session's
@@ -51,12 +68,12 @@ export async function POST(req) {
       discount,
     });
 
-    const invoiceNo = await getNextInvoiceNumber(branchConfig.code);
+    const invoiceNo = await getNextInvoiceNumber(branchConfig.code, resolvedDate);
 
     const saved = await createInvoice({
       branchCode: branchConfig.code,
       invoiceNo,
-      invoiceDate: new Date().toISOString().slice(0, 10),
+      invoiceDate: resolvedDate.toISOString().slice(0, 10),
       purchaserName: purchaserName || "",
       purchaserAddress: purchaserAddress || "",
       purchaserTp: purchaserTp || "",
