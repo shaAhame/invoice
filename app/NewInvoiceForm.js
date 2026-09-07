@@ -33,6 +33,7 @@ function sanitizeNumeric(value, allowDecimal) {
 export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
   const router = useRouter();
   const [branch, setBranch] = useState(isAdmin ? "prime" : lockedBranchKey);
+  const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [purchaserName, setPurchaserName] = useState("");
   const [purchaserAddress, setPurchaserAddress] = useState("");
   const [purchaserTp, setPurchaserTp] = useState("");
@@ -96,6 +97,7 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           branch,
+          invoiceDate,
           purchaserName,
           purchaserAddress,
           purchaserTp,
@@ -134,15 +136,27 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
         </div>
       </div>
 
-      <div style={card}>
-        <label style={label}>Branch</label>
-        {isAdmin ? (
-          <select style={input} value={branch} onChange={(e) => setBranch(e.target.value)}>
-            {BRANCH_OPTIONS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
-          </select>
-        ) : (
-          <div style={{ ...input, background: "#f3f4f6", color: "#111" }}>{lockedLabel}</div>
-        )}
+      <div className="responsive-grid" style={{ ...card, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
+          <label style={label}>Branch</label>
+          {isAdmin ? (
+            <select style={input} value={branch} onChange={(e) => setBranch(e.target.value)}>
+              {BRANCH_OPTIONS.map((b) => <option key={b.value} value={b.value}>{b.label}</option>)}
+            </select>
+          ) : (
+            <div style={{ ...input, background: "#f3f4f6", color: "#111" }}>{lockedLabel}</div>
+          )}
+        </div>
+        <div>
+          <label style={label}>Invoice Date</label>
+          <input
+            style={input}
+            type="date"
+            value={invoiceDate}
+            max={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setInvoiceDate(e.target.value)}
+          />
+        </div>
       </div>
 
       <div className="responsive-grid" style={{ ...card, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
