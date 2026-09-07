@@ -12,7 +12,7 @@ const BRANCH_OPTIONS = [
 ];
 
 function emptyItem() {
-  return { id: Math.random().toString(36).slice(2), description: "", qty: "1", unitPrice: "", isMrp: false };
+  return { id: Math.random().toString(36).slice(2), description: "", serialNo: "", qty: "1", unitPrice: "", isMrp: false };
 }
 
 // Keeps only digits (and a single decimal point for prices), then strips
@@ -38,7 +38,7 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
   const [purchaserAddress, setPurchaserAddress] = useState("");
   const [purchaserTp, setPurchaserTp] = useState("");
   const [purchaserTin, setPurchaserTin] = useState("");
-  const [additionalInfo, setAdditionalInfo] = useState("");
+  const [additionalInfoList, setAdditionalInfoList] = useState([""]);
   const [paymentMode, setPaymentMode] = useState(PAYMENT_MODES[0]);
   const [discount, setDiscount] = useState("0");
   const [items, setItems] = useState([emptyItem()]);
@@ -102,11 +102,12 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
           purchaserAddress,
           purchaserTp,
           purchaserTin,
-          additionalInfo,
+          additionalInfo: additionalInfoList.map((n) => n.trim()).filter(Boolean).join("\n"),
           paymentMode,
           discount: discountVal,
           items: validItems.map((r) => ({
             description: r.description,
+            serialNo: r.serialNo,
             qty: r.qty,
             unitPrice: r.unitPrice,
             isMrp: r.isMrp,
@@ -201,7 +202,15 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id}>
-                  <td style={td}><input style={cellInput} value={r.description} onChange={(e) => updateItem(r.id, "description", e.target.value)} placeholder="Item name" /></td>
+                  <td style={td}>
+                    <input style={cellInput} value={r.description} onChange={(e) => updateItem(r.id, "description", e.target.value)} placeholder="Item name" />
+                    <input
+                      style={{ ...cellInput, marginTop: 4, fontSize: 12, color: "#555" }}
+                      value={r.serialNo}
+                      onChange={(e) => updateItem(r.id, "serialNo", e.target.value)}
+                      placeholder="Serial / IMEI No. (optional)"
+                    />
+                  </td>
                   <td style={td}><input style={{ ...cellInput, width: 60 }} type="text" inputMode="numeric" value={r.qty} onChange={(e) => updateItem(r.id, "qty", e.target.value)} /></td>
                   <td style={{ ...td, textAlign: "center" }}>
                     <input type="checkbox" checked={r.isMrp} onChange={(e) => updateItem(r.id, "isMrp", e.target.checked)} />
@@ -232,7 +241,32 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
         </div>
         <div style={{ gridColumn: "1 / -1" }}>
           <label style={label}>Additional Information (optional)</label>
-          <input style={input} value={additionalInfo} onChange={(e) => setAdditionalInfo(e.target.value)} placeholder="Any note to show on the invoice" />
+          {additionalInfoList.map((note, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+              <input
+                style={input}
+                value={note}
+                onChange={(e) => {
+                  const next = [...additionalInfoList];
+                  next[i] = e.target.value;
+                  setAdditionalInfoList(next);
+                }}
+                placeholder="e.g. Warranty period, delivery note, etc."
+              />
+              {additionalInfoList.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setAdditionalInfoList(additionalInfoList.filter((_, idx) => idx !== i))}
+                  style={removeBtn}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+          <button type="button" onClick={() => setAdditionalInfoList([...additionalInfoList, ""])} style={addBtn}>
+            + Add another note
+          </button>
         </div>
       </div>
 
