@@ -55,7 +55,7 @@ export async function PUT(req, { params }) {
     const computedItems = computeItems(
       items.map((it) => ({ ...it, description: String(it.description || "").slice(0, 300) }))
     );
-    const { totalExclusive, discountVal, vatAmount, totalAmount } = computeTotals(computedItems, {
+    const { totalExclusive, discountVal, ssclAmount, vatAmount, totalAmount } = computeTotals(computedItems, {
       discount,
     });
 
@@ -68,7 +68,7 @@ export async function PUT(req, { params }) {
       items: computedItems,
       totalValue: totalExclusive,
       discount: discountVal,
-      ssclAmount: 0,
+      ssclAmount,
       vatAmount,
       totalAmount,
       amountWords: amountToWords(totalAmount),
