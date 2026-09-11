@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { PAYMENT_MODES } from "../lib/branches";
+import { PAYMENT_MODES, PRICING_MODES, VAT_RATE, SSCL_RATE } from "../lib/branches";
 import LogoutButton from "./components/LogoutButton";
 
 const BRANCH_OPTIONS = [
@@ -12,7 +12,7 @@ const BRANCH_OPTIONS = [
 ];
 
 function emptyItem() {
-  return { id: Math.random().toString(36).slice(2), description: "", serialNo: "", qty: "1", unitPrice: "", isMrp: false };
+  return { id: Math.random().toString(36).slice(2), description: "", serialNo: "", qty: "1", unitPrice: "", pricingMode: "vat" };
 }
 
 // Keeps only digits (and a single decimal point for prices), then strips
@@ -55,32 +55,41 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
   const addItem = () => setItems((prev) => [...prev, emptyItem()]);
   const removeItem = (id) => setItems((prev) => (prev.length > 1 ? prev.filter((it) => it.id !== id) : prev));
 
-  // Two pricing scenarios per item, picked with the MRP checkbox on that row:
-  //   MRP checked   -> price entered already includes 18% VAT (split it out)
-  //   MRP unchecked -> price entered is before tax (add 18% VAT on top)
-  const VAT_RATE = 0.18;
+  // Three pricing scenarios per item, picked with the "Pricing" dropdown on that row:
+  //   mrp      -> price already includes 18% VAT (split it out)
+  //   vat      -> price is before tax, add 18% VAT on top
+  //   sscl_vat -> price is before tax, add SSCL 2.5% first, then 18% VAT on (base + SSCL)
   const rows = items.map((it) => {
     const qty = Number(it.qty) || 0;
     const unitPrice = Number(it.unitPrice) || 0;
     const lineRaw = qty * unitPrice;
-    let lineExclusive, lineVat, lineInclusive;
-    if (it.isMrp) {
+    let lineExclusive, lineSscl, lineVat, lineInclusive;
+
+    if (it.pricingMode === "mrp") {
       lineInclusive = lineRaw;
       lineExclusive = lineRaw / (1 + VAT_RATE);
+      lineSscl = 0;
       lineVat = lineInclusive - lineExclusive;
+    } else if (it.pricingMode === "sscl_vat") {
+      lineExclusive = lineRaw;
+      lineSscl = lineExclusive * SSCL_RATE;
+      lineVat = (lineExclusive + lineSscl) * VAT_RATE;
+      lineInclusive = lineExclusive + lineSscl + lineVat;
     } else {
       lineExclusive = lineRaw;
+      lineSscl = 0;
       lineVat = lineExclusive * VAT_RATE;
       lineInclusive = lineExclusive + lineVat;
     }
-    return { ...it, qty, unitPrice, lineExclusive, lineVat, lineInclusive };
+
+    return { ...it, qty, unitPrice, lineExclusive, lineSscl, lineVat, lineInclusive };
   });
 
   const totalExclusive = rows.reduce((s, r) => s + r.lineExclusive, 0);
+  const ssclAmount = rows.reduce((s, r) => s + r.lineSscl, 0);
+  const vatAmount = rows.reduce((s, r) => s + r.lineVat, 0);
   const discountVal = Number(discount) || 0;
-  const netExclusive = totalExclusive - discountVal;
-  const vatAmount = netExclusive * VAT_RATE;
-  const totalAmount = netExclusive + vatAmount;
+  const totalAmount = totalExclusive + ssclAmount + vatAmount - discountVal;
 
   const fmt = (n) => (isFinite(n) ? n.toLocaleString("en-LK", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0.00");
 
@@ -112,7 +121,7 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
             serialNo: r.serialNo,
             qty: r.qty,
             unitPrice: r.unitPrice,
-            isMrp: r.isMrp,
+            pricingMode: r.pricingMode,
           })),
         }),
       });
@@ -129,7 +138,7 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
   const lockedLabel = lockedBranchKey ? BRANCH_OPTIONS.find((b) => b.value === lockedBranchKey)?.label : "";
 
   return (
-    <main style={{ maxWidth: 940, margin: "0 auto", padding: "16px" }}>
+    <main style={{ maxWidth: 980, margin: "0 auto", padding: "16px" }}>
       <div className="header-row" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <h1 style={{ fontSize: 20 }}>New Tax Invoice</h1>
         <div className="header-actions" style={{ display: "flex", gap: 10, alignItems: "center" }}>
@@ -193,18 +202,19 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
       <div style={card}>
         <label style={label}>Items</label>
         <p style={{ fontSize: 12, color: "#666", marginTop: -2, marginBottom: 8 }}>
-          Tick <b>MRP</b> on a row if the price you're typing already includes 18% VAT (sticker price).
-          Leave it unticked if you're typing the price before tax — VAT will be added on top.
+          Pick a <b>Pricing</b> option per item: <b>MRP</b> if the price already includes 18% VAT,
+          <b> + VAT 18%</b> if it's before tax, or <b> + SSCL 2.5% + VAT 18%</b> to add both taxes on top of the price before tax.
         </p>
         <div className="table-scroll">
-          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8, minWidth: 700 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", marginTop: 8, minWidth: 900 }}>
             <thead>
               <tr style={{ textAlign: "left", fontSize: 12, color: "#555" }}>
                 <th style={th}>Description</th>
                 <th style={th}>Qty</th>
-                <th style={{ ...th, textAlign: "center" }}>MRP?</th>
+                <th style={th}>Pricing</th>
                 <th style={th}>Unit Price</th>
                 <th style={th}>Excl. VAT</th>
+                <th style={th}>SSCL (2.5%)</th>
                 <th style={th}>VAT (18%)</th>
                 <th style={th}>Line Total</th>
                 <th></th>
@@ -223,11 +233,14 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
                     />
                   </td>
                   <td style={td}><input style={{ ...cellInput, width: 60 }} type="text" inputMode="numeric" value={r.qty} onChange={(e) => updateItem(r.id, "qty", e.target.value)} /></td>
-                  <td style={{ ...td, textAlign: "center" }}>
-                    <input type="checkbox" checked={r.isMrp} onChange={(e) => updateItem(r.id, "isMrp", e.target.checked)} />
+                  <td style={td}>
+                    <select style={{ ...cellInput, width: 150 }} value={r.pricingMode} onChange={(e) => updateItem(r.id, "pricingMode", e.target.value)}>
+                      {PRICING_MODES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+                    </select>
                   </td>
                   <td style={td}><input style={{ ...cellInput, width: 110 }} type="text" inputMode="decimal" value={r.unitPrice} onChange={(e) => updateItem(r.id, "unitPrice", e.target.value)} placeholder="60000" /></td>
                   <td style={{ ...td, fontSize: 13 }}>{fmt(r.lineExclusive)}</td>
+                  <td style={{ ...td, fontSize: 13 }}>{fmt(r.lineSscl)}</td>
                   <td style={{ ...td, fontSize: 13 }}>{fmt(r.lineVat)}</td>
                   <td style={{ ...td, fontSize: 13, fontWeight: 600 }}>{fmt(r.lineInclusive)}</td>
                   <td style={td}><button onClick={() => removeItem(r.id)} style={removeBtn}>✕</button></td>
@@ -241,7 +254,7 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
 
       <div className="responsive-grid" style={{ ...card, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
-          <label style={label}>Discount (Rs., excl. VAT basis, optional)</label>
+          <label style={label}>Discount (Rs., optional — subtracted from the final total)</label>
           <input style={input} type="text" inputMode="decimal" value={discount} onChange={(e) => setDiscount(sanitizeNumeric(e.target.value, true))} />
         </div>
         <div>
@@ -282,9 +295,10 @@ export default function NewInvoiceForm({ isAdmin, lockedBranchKey }) {
       </div>
 
       <div style={{ ...card, background: "#fafafa" }}>
-        <Row label="Total Value of Supply (excl. VAT)" value={fmt(totalExclusive)} />
-        <Row label="Discount" value={fmt(discountVal)} />
+        <Row label="Total Value of Supply (excl. tax)" value={fmt(totalExclusive)} />
+        {ssclAmount > 0 && <Row label="SSCL (2.5%)" value={fmt(ssclAmount)} />}
         <Row label="VAT Amount (18%)" value={fmt(vatAmount)} />
+        <Row label="Discount" value={fmt(discountVal)} />
         <Row label="Total Amount including VAT" value={fmt(totalAmount)} bold />
       </div>
 
